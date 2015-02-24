@@ -16,4 +16,4 @@ A solution to the Softwire Support Team Pokémon Challenge in Scala:
 > 
 > So, the challenge is – can you find a minimal set S of all subsets of the Pokédex, such that all the letters of the alphabet appear in S?
 
-This currently gets the correct answer in ~21.5 seconds. However colleagues have got it [under a second](https://github.com/MatthewRichards/PokemonChallenge) by using bitmasks instead of strings, and it might take a fair overhaul to beat that. :-(
+This currently gets the correct answer in ~21.5 seconds. I do have ideas to improve that - some left as comments in the code - but colleagues have got it [under a second](https://github.com/MatthewRichards/PokemonChallenge) by using bitmasks instead of strings and it might take a fair overhaul to beat that :-(
