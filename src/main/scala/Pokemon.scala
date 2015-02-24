@@ -101,12 +101,64 @@ object Pokemon extends App {
   def shortestSolution(bestSoFar: Solution): Solution =
     shortestSolutionRecurse(Set.empty[String], 0, sortedLetters, bestSoFar)
 
+  def betterSolution(a: Solution, b: Solution): Solution =
+    if (a.size < b.size) a
+    else if (b.size < a.size) b
+    else {
+      // a.size == b.size
+      if (a.length < b.length) a
+      else if (b.length < a.length) b
+      else {
+        // a.length == b.length
+        b.withAlternative(a)
+      }
+    }
+
+  def bestSolutionRecurse(soFar: Set[String], soFarCount: Int, soFarLength: Int, letters: Seq[Char], bestSoFar: Solution): Solution = {
+    letters match {
+      case letter +: moreLetters =>
+        if (soFar.exists(_.contains(letter)))
+          bestSolutionRecurse(soFar, soFarCount, soFarLength, moreLetters, bestSoFar)
+        else if (soFarCount >= bestSoFar.size) {
+          // We can't add any more Pokemon to make a better solution
+          bestSoFar
+        } else {
+          val newPokemon = pokemonByLetter(letter).filterNot(soFar.contains(_))
+
+          def tryPokemon(newP: Seq[String], bestSoFar: Solution): Solution = newP match {
+            case aPokemon +: morePokemon =>
+              val newSolution =
+                if (soFarCount >= bestSoFar.size) {
+                  bestSoFar
+                } else if ((soFarCount == bestSoFar.size) && ((soFarLength + aPokemon.length) > bestSoFar.length))
+                  bestSoFar
+                else
+                  bestSolutionRecurse(soFar + aPokemon, soFarCount + 1, soFarLength + aPokemon.length, moreLetters, bestSoFar)
+              tryPokemon(morePokemon, betterSolution(newSolution, bestSoFar))
+            case Nil =>
+              bestSoFar
+          }
+          tryPokemon(newPokemon, bestSoFar)
+        }
+      case Nil =>
+        val newSolution = Solution(soFar)
+        val newBest = betterSolution(newSolution, bestSoFar)
+        if (newBest != bestSoFar) println(newBest)
+        newBest
+    }
+  }
+
+  def bestSolution(bestSoFar: Solution): Solution =
+    bestSolutionRecurse(Set.empty[String], 0, 0, sortedLetters, bestSoFar)
+
   val start = System.currentTimeMillis()
   // TODO parallelise across first letter
   val shortest = shortestSolution(allPokemon)
+  println
+  val best = bestSolution(shortest)
   val end = System.currentTimeMillis()
 
   val runtime = end - start
   println(s"Took $runtime ms")
-  println(shortest)
+  println(best)
 }
