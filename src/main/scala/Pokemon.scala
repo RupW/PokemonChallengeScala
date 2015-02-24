@@ -42,14 +42,14 @@ object Pokemon extends App {
   case class Solution(length: Int, pokemon: Set[String])
   val allPokemon = Solution(worstCaseLength, pokemon)
 
-  def betterSolution(a: Solution, b: Solution): Solution =
+  def shorterSolution(a: Solution, b: Solution): Solution =
     if (a.length < b.length) a else b
 
-  def buildPowerSets(soFar: Set[String], soFarLength: Int, letters: Seq[Char], bestSoFar: Solution): Solution = {
+  def shortestSolutionRecurse(soFar: Set[String], soFarLength: Int, letters: Seq[Char], bestSoFar: Solution): Solution = {
     letters match {
       case letter +: moreLetters =>
         if (soFar.exists(_.contains(letter)))
-          buildPowerSets(soFar, soFarLength, moreLetters, bestSoFar)
+          shortestSolutionRecurse(soFar, soFarLength, moreLetters, bestSoFar)
         else {
           val newPokemon = pokemonByLetter(letter).filterNot(soFar.contains(_))
 
@@ -59,8 +59,8 @@ object Pokemon extends App {
                 if ((soFarLength + aPokemon.length) > bestSoFar.length)
                   bestSoFar
                 else
-                  buildPowerSets(soFar + aPokemon, soFarLength + aPokemon.length, moreLetters, bestSoFar)
-              tryPokemon(morePokemon, betterSolution(newSolution, bestSoFar))
+                  shortestSolutionRecurse(soFar + aPokemon, soFarLength + aPokemon.length, moreLetters, bestSoFar)
+              tryPokemon(morePokemon, shorterSolution(newSolution, bestSoFar))
             case Nil =>
               bestSoFar
           }
@@ -76,11 +76,15 @@ object Pokemon extends App {
     }
   }
 
+  def shortestSolution(bestSoFar: Solution): Solution =
+    shortestSolutionRecurse(Set.empty[String], 0, sortedLetters, bestSoFar)
+
   val start = System.currentTimeMillis()
   // TODO parallelise across first letter
-  val solution = buildPowerSets(Set.empty[String], 0, sortedLetters, allPokemon)
+  val shortest = shortestSolution(allPokemon)
   val end = System.currentTimeMillis()
-  println(solution)
+
+  println(shortest)
   val runtime = end - start
   println(s"Took $runtime ms")
 }
