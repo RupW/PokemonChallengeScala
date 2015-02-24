@@ -35,12 +35,33 @@ object Pokemon extends App {
   val pokemonByLetterSets = letters.map { letter =>
     letter -> pokemon.filter(_.contains(letter)).toSet
   }.toMap
-  val worstCaseLength = pokemon.foldLeft(0)((lengthSoFar, next) => lengthSoFar + next.length)
+
+  def totalLetters(input: Set[String]): Int =
+    input.foldLeft(0)((lengthSoFar, next) => lengthSoFar + next.length)
 
   val sortedLetters = letters.toList.sortBy(pokemonByLetterSets(_).size)
 
-  case class Solution(length: Int, pokemon: Set[String])
-  val allPokemon = Solution(worstCaseLength, pokemon)
+  case class Solution(pokemon: Set[String], alternatives: Set[Set[String]] = Set.empty) {
+    val size: Int = pokemon.size
+    lazy val length: Int = totalLetters(pokemon)
+
+    def withAlternative(other: Solution) = {
+      val newAlternatives = alternatives ++ other.alternatives + other.pokemon - pokemon
+      if (!newAlternatives.isEmpty) this.copy(alternatives = newAlternatives)
+      else this
+    }
+
+    override def toString = {
+      val thisSet = s"$size, $length : " + pokemon.mkString(", ")
+      if (alternatives.isEmpty) thisSet
+      else {
+        val alternativesString = alternatives.map(_.mkString(", ")).mkString(" or ")
+        s"$thisSet ($alternativesString)"
+      }
+    }
+  }
+
+  val allPokemon = Solution(pokemon)
 
   def shorterSolution(a: Solution, b: Solution): Solution =
     if (a.length < b.length) a else b
@@ -68,8 +89,9 @@ object Pokemon extends App {
         }
       case Nil =>
         if (soFarLength < bestSoFar.length) {
-          println(soFarLength.toString + " : " + soFar.mkString(", "))
-          Solution(soFarLength, soFar)
+          val newSolution = Solution(soFar)
+          println(newSolution)
+          newSolution
         } else {
           bestSoFar
         }
@@ -84,7 +106,7 @@ object Pokemon extends App {
   val shortest = shortestSolution(allPokemon)
   val end = System.currentTimeMillis()
 
-  println(shortest)
   val runtime = end - start
   println(s"Took $runtime ms")
+  println(shortest)
 }
