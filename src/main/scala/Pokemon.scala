@@ -11,7 +11,7 @@ object Pokemon extends App {
     }
   }
 
-  lazy val pokemon: immutable.Set[String] = {
+  lazy val allPokemon: immutable.Set[String] = {
     import spray.json._
 
     val pokemonArray = readResource("pokemon.json").parseJson
@@ -26,14 +26,35 @@ object Pokemon extends App {
     }
   }
 
-  // TODO let's remove pokemon where any other has the same or greater set of letters in a shorter name
-
   val letters = ('a'.asInstanceOf[Int] until 'z'.asInstanceOf[Int]).inclusive.map { _.asInstanceOf[Char] }
-  val pokemonByLetter = letters.map { letter =>
-    letter -> pokemon.filter(_.contains(letter)).toList.sortBy(_.length)
-  }.toMap
+  val lettersSet = letters.toSet
+
+  // Look for Pokemon whose letters all appear in a shorter name and remove them
+  def removeWhereAllLettersAppearInShorterName(inputSet: Set[String]): Set[String] = {
+    val inputByLetterSets = letters.map { letter =>
+      letter -> inputSet.filter(_.contains(letter)).toSet
+    }.toMap
+    def distinctLetters(input: String): Set[Char] = input.toSet & lettersSet
+    def sameLetters(input: String): Set[String] =
+      distinctLetters(input).toSeq match {
+        case first +: tail => tail.foldLeft(inputByLetterSets(first))((setSoFar, letter) => setSoFar & inputByLetterSets(letter))
+        case _ => throw new IllegalArgumentException("no letters in input")
+      }
+    def shortestInSet(input: Set[String]) = input.toList.sortWith { (a, b) =>
+      (a.length < b.length) || ((a.length == b.length) && (a < b))
+    }.head
+
+    inputSet.map{ p => shortestInSet(sameLetters(p)) }.toSet
+  }
+
+  val pokemon = removeWhereAllLettersAppearInShorterName(allPokemon)
+  println(s"Reduced ${allPokemon.size} to ${pokemon.size} pokemon")
+
   val pokemonByLetterSets = letters.map { letter =>
     letter -> pokemon.filter(_.contains(letter)).toSet
+  }.toMap
+  val pokemonByLetter = letters.map { letter =>
+    letter -> pokemon.filter(_.contains(letter)).toList.sortBy(_.length)
   }.toMap
 
   def totalLetters(input: Set[String]): Int =
@@ -61,7 +82,7 @@ object Pokemon extends App {
     }
   }
 
-  val allPokemon = Solution(pokemon)
+  val allPokemonSolution = Solution(pokemon)
 
   def shorterSolution(a: Solution, b: Solution): Solution =
     if (a.length < b.length) a else b
@@ -153,7 +174,7 @@ object Pokemon extends App {
 
   val start = System.currentTimeMillis()
   // TODO parallelise across first letter
-  val shortest = shortestSolution(allPokemon)
+  val shortest = shortestSolution(allPokemonSolution)
   println
   val best = bestSolution(shortest)
   val end = System.currentTimeMillis()
