@@ -26,6 +26,8 @@ object Pokemon extends App {
     }
   }
 
+  // TODO let's remove pokemon where any other has the same or greater set of letters in a shorter name
+
   val letters = ('a'.asInstanceOf[Int] until 'z'.asInstanceOf[Int]).inclusive.map { _.asInstanceOf[Char] }
   val pokemonByLetter = letters.map { letter =>
     letter -> pokemon.filter(_.contains(letter)).toList.sortBy(_.length)
@@ -35,20 +37,21 @@ object Pokemon extends App {
   }.toMap
   val worstCaseLength = pokemon.foldLeft(0)((lengthSoFar, next) => lengthSoFar + next.length)
 
+  val sortedLetters = letters.toList.sortBy(pokemonByLetterSets(_).size)
+
   case class Solution(length: Int, pokemon: Set[String])
   val allPokemon = Solution(worstCaseLength, pokemon)
 
   def betterSolution(a: Solution, b: Solution): Solution =
     if (a.length < b.length) a else b
 
-  def buildPowerSets(soFar: Set[String], soFarConcat: String, letters: Seq[Char], bestSoFar: Solution): Solution = {
+  def buildPowerSets(soFar: Set[String], soFarLength: Int, letters: Seq[Char], bestSoFar: Solution): Solution = {
     letters match {
       case letter +: moreLetters =>
-        if (soFarConcat.contains(letter))
-          buildPowerSets(soFar, soFarConcat, moreLetters, bestSoFar)
+        if (soFar.exists(_.contains(letter)))
+          buildPowerSets(soFar, soFarLength, moreLetters, bestSoFar)
         else {
           val newPokemon = pokemonByLetter(letter).filterNot(soFar.contains(_))
-          val soFarLength = soFarConcat.length
 
           def tryPokemon(newP: Seq[String], bestSoFar: Solution): Solution = newP match {
             case aPokemon +: morePokemon =>
@@ -56,7 +59,7 @@ object Pokemon extends App {
                 if ((soFarLength + aPokemon.length) > bestSoFar.length)
                   bestSoFar
                 else
-                  buildPowerSets(soFar + aPokemon, soFarConcat + aPokemon, moreLetters, bestSoFar)
+                  buildPowerSets(soFar + aPokemon, soFarLength + aPokemon.length, moreLetters, bestSoFar)
               tryPokemon(morePokemon, betterSolution(newSolution, bestSoFar))
             case Nil =>
               bestSoFar
@@ -64,16 +67,20 @@ object Pokemon extends App {
           tryPokemon(newPokemon, bestSoFar)
         }
       case Nil =>
-        if (soFarConcat.length < bestSoFar.length)
-          Solution(soFarConcat.length, soFar)
-        else
+        if (soFarLength < bestSoFar.length) {
+          println(soFarLength.toString + " : " + soFar.mkString(", "))
+          Solution(soFarLength, soFar)
+        } else {
           bestSoFar
+        }
     }
   }
 
-  val solution = buildPowerSets(Set.empty[String], "", letters, allPokemon)
   val start = System.currentTimeMillis()
-  println(solution)
+  // TODO parallelise across first letter
+  val solution = buildPowerSets(Set.empty[String], 0, sortedLetters, allPokemon)
   val end = System.currentTimeMillis()
-  println(s"Took ${end-start} ms")
+  println(solution)
+  val runtime = end - start
+  println(s"Took $runtime ms")
 }
