@@ -81,6 +81,17 @@ object Pokemon extends App {
 
   val allPokemonSolution = Solution(pokemon)
 
+  /**
+   * Find the shortest possible solution, i.e. fewest letters ignoring Pokemon
+   * count.
+   *
+   * Coded up by mistake, because I'd misread the question.
+   *
+   * @param bestSoFar a starting value for 'best so far', e.g. the solution
+   *                  containing all Pokemon
+   * @return the best solution discovered, which may be the original solution
+   *         passed in if it cannot be bettered.
+   */
   def shortestSolution(bestSoFar: Solution): Solution = {
 
     def shorterSolution(a: Solution, b: Solution): Solution =
@@ -154,6 +165,14 @@ object Pokemon extends App {
       }
     }
 
+  def leastSolution(a: Option[Solution], b: Option[Solution]): Option[Solution] = a match {
+    case Some(firstSolution) => b match {
+      case Some(solution) => Some(leastSolution(firstSolution, solution))
+      case None => a
+    }
+    case None => b
+  }
+
   def findLeastSolution(bestSoFar: Solution): Solution = {
     def leastSolutionRecurse(soFar: immutable.Set[String], soFarCount: Int, soFarLength: Int, letters: immutable.Seq[Char], bestSoFar: Solution): Solution = {
       letters match {
@@ -192,21 +211,53 @@ object Pokemon extends App {
     leastSolutionRecurse(immutable.Set.empty[String], 0, 0, sortedLetters, bestSoFar)
   }
 
+  def findShallowestSolution(maxDepth: Int): Option[Solution] = {
+    def leastSolutionRecurse(soFar: immutable.Set[String], soFarCount: Int, soFarLength: Int, letters: immutable.Seq[Char], bestSoFar: Option[Solution]): Option[Solution] = {
+      letters match {
+        case letter +: moreLetters =>
+          if (soFar.exists(_.contains(letter)))
+            leastSolutionRecurse(soFar, soFarCount, soFarLength, moreLetters, bestSoFar)
+          else if (soFarCount >= maxDepth) {
+            // We can't add any more Pokemon to make a better solution
+            bestSoFar
+          } else {
+            val newPokemon = pokemonByLetter(letter).filterNot(soFar.contains(_))
+
+            def tryPokemon(newP: immutable.Seq[String], bestSoFar: Option[Solution]): Option[Solution] = newP match {
+              case aPokemon +: morePokemon =>
+                val newSolution =
+                  if (soFarCount >= maxDepth) {
+                    bestSoFar
+                  } else if (bestSoFar.isDefined && (soFarCount == bestSoFar.get.size) && ((soFarLength + aPokemon.length) > bestSoFar.get.length))
+                    bestSoFar
+                  else
+                    leastSolutionRecurse(soFar + aPokemon, soFarCount + 1, soFarLength + aPokemon.length, moreLetters, bestSoFar)
+                tryPokemon(morePokemon, leastSolution(newSolution, bestSoFar))
+              case Nil =>
+                bestSoFar
+            }
+            tryPokemon(newPokemon, bestSoFar)
+          }
+        case Nil =>
+          val newSolution = Some(Solution(soFar))
+          val newBest = leastSolution(newSolution, bestSoFar)
+          if (newBest != bestSoFar) println(newBest)
+          newBest
+      }
+    }
+
+    leastSolutionRecurse(immutable.Set.empty[String], 0, 0, sortedLetters, None)
+  }
+
   val start = System.currentTimeMillis()
   // TODO parallelise across first letter
 
-  // Find the shortest solution, i.e. the one only considering the fewest
-  // possible letters and not the number of Pokemon in the solution. I
-  // accidentally coded this one first, having not read the problem
-  // properly, and whilst it isn't the final answer it is reasonably close and
-  // provides a good upper-bound solution for the main search method to avoid
-  // searching too deeply for bad solutions.
-  val shortest = shortestSolution(allPokemonSolution)
+  // Breath-first search
+  // Create a lazily-evaluated stream of solutions with an increasing maximum depth
+  // then take the first non-empty result as our solution
+  val solutionStream = (1 until letters.size).inclusive.toStream.map { findShallowestSolution(_) }
+  val best: Solution = solutionStream.collectFirst{ case Some(solution) => solution }.get
 
-  // Using the shortest solution as an upper bound, search for the true least
-  // solution.
-  val best = findLeastSolution(shortest)
-  
   // Done!
   val end = System.currentTimeMillis()
 
