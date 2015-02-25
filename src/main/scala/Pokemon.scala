@@ -57,6 +57,10 @@ object Pokemon extends App {
   def totalLetters(input: immutable.Set[String]): Int =
     input.foldLeft(0)((lengthSoFar, next) => lengthSoFar + next.length)
 
+  /**
+   * Important optimisation: re-order the alphabet that we search through so
+   * that the letters with fewest choices are searched first.
+   */
   val sortedLetters = letters.toList.sortBy(pokemonByLetter(_).size)
 
   case class Solution(pokemon: immutable.Set[String], alternatives: immutable.Set[immutable.Set[String]] = Set.empty) {
@@ -77,61 +81,6 @@ object Pokemon extends App {
         s"$thisSet ($alternativesString)"
       }
     }
-  }
-
-  val allPokemonSolution = Solution(pokemon)
-
-  /**
-   * Find the shortest possible solution, i.e. fewest letters ignoring Pokemon
-   * count.
-   *
-   * Coded up by mistake, because I'd misread the question.
-   *
-   * @param bestSoFar a starting value for 'best so far', e.g. the solution
-   *                  containing all Pokemon
-   * @return the best solution discovered, which may be the original solution
-   *         passed in if it cannot be bettered.
-   */
-  def shortestSolution(bestSoFar: Solution): Solution = {
-
-    def shorterSolution(a: Solution, b: Solution): Solution =
-      if (a.length < b.length) a
-      else if (a.length > b.length) b
-      else b.withAlternative(a)
-
-    def shortestSolutionRecurse(soFar: immutable.Set[String], soFarLength: Int, letters: immutable.Seq[Char], bestSoFar: Solution): Solution = {
-      letters match {
-        case letter +: moreLetters =>
-          if (soFar.exists(_.contains(letter)))
-            shortestSolutionRecurse(soFar, soFarLength, moreLetters, bestSoFar)
-          else {
-            val newPokemon = pokemonByLetter(letter).filterNot(soFar.contains(_))
-
-            def tryPokemon(newP: immutable.Seq[String], bestSoFar: Solution): Solution = newP match {
-              case aPokemon +: morePokemon =>
-                val newSolution =
-                  if ((soFarLength + aPokemon.length) > bestSoFar.length)
-                    bestSoFar
-                  else
-                    shortestSolutionRecurse(soFar + aPokemon, soFarLength + aPokemon.length, moreLetters, bestSoFar)
-                tryPokemon(morePokemon, shorterSolution(newSolution, bestSoFar))
-              case Nil =>
-                bestSoFar
-            }
-            tryPokemon(newPokemon, bestSoFar)
-          }
-        case Nil =>
-          if (soFarLength < bestSoFar.length) {
-            val newSolution = Solution(soFar)
-            println(newSolution)
-            newSolution
-          } else {
-            bestSoFar
-          }
-      }
-    }
-
-    shortestSolutionRecurse(immutable.Set.empty[String], 0, sortedLetters, bestSoFar)
   }
 
   /**
@@ -171,44 +120,6 @@ object Pokemon extends App {
       case None => a
     }
     case None => b
-  }
-
-  def findLeastSolution(bestSoFar: Solution): Solution = {
-    def leastSolutionRecurse(soFar: immutable.Set[String], soFarCount: Int, soFarLength: Int, letters: immutable.Seq[Char], bestSoFar: Solution): Solution = {
-      letters match {
-        case letter +: moreLetters =>
-          if (soFar.exists(_.contains(letter)))
-            leastSolutionRecurse(soFar, soFarCount, soFarLength, moreLetters, bestSoFar)
-          else if (soFarCount >= bestSoFar.size) {
-            // We can't add any more Pokemon to make a better solution
-            bestSoFar
-          } else {
-            val newPokemon = pokemonByLetter(letter).filterNot(soFar.contains(_))
-
-            def tryPokemon(newP: immutable.Seq[String], bestSoFar: Solution): Solution = newP match {
-              case aPokemon +: morePokemon =>
-                val newSolution =
-                  if (soFarCount >= bestSoFar.size) {
-                    bestSoFar
-                  } else if ((soFarCount == bestSoFar.size) && ((soFarLength + aPokemon.length) > bestSoFar.length))
-                    bestSoFar
-                  else
-                    leastSolutionRecurse(soFar + aPokemon, soFarCount + 1, soFarLength + aPokemon.length, moreLetters, bestSoFar)
-                tryPokemon(morePokemon, leastSolution(newSolution, bestSoFar))
-              case Nil =>
-                bestSoFar
-            }
-            tryPokemon(newPokemon, bestSoFar)
-          }
-        case Nil =>
-          val newSolution = Solution(soFar)
-          val newBest = leastSolution(newSolution, bestSoFar)
-          if (newBest != bestSoFar) println(newBest)
-          newBest
-      }
-    }
-
-    leastSolutionRecurse(immutable.Set.empty[String], 0, 0, sortedLetters, bestSoFar)
   }
 
   def findShallowestSolution(maxDepth: Int): Option[Solution] = {
