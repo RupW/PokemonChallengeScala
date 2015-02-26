@@ -217,7 +217,7 @@ object Pokemon extends App {
         case letter +: moreLetters =>
           if (soFar.exists(_.contains(letter)))
             leastSolutionRecurse(soFar, soFarCount, soFarLength, moreLetters, bestSoFar)
-          else if (soFarCount >= maxDepth) {
+          else if ((soFarCount >= maxDepth) || (bestSoFar.isDefined && soFarCount >= bestSoFar.get.size)) {
             // We can't add any more Pokemon to make a better solution
             bestSoFar
           } else {
@@ -225,14 +225,18 @@ object Pokemon extends App {
 
             def tryPokemon(newP: immutable.Seq[String], bestSoFar: Option[Solution]): Option[Solution] = newP match {
               case aPokemon +: morePokemon =>
-                val newSolution =
-                  if (soFarCount >= maxDepth) {
-                    bestSoFar
-                  } else if (bestSoFar.isDefined && (soFarCount == bestSoFar.get.size) && ((soFarLength + aPokemon.length) > bestSoFar.get.length))
-                    bestSoFar
-                  else
+                if (bestSoFar.isDefined &&
+                  ((soFarCount + 1) == bestSoFar.get.size) && ((soFarLength + aPokemon.length) > bestSoFar.get.length)) {
+                  // Adding this Pokemon would make us worse than the existing best solution, i.e. longer.
+                  // However because the list of Pokemon we're traversing is shortest first, there's no point
+                  // keeping going; no further Pokemon in the list can produce a shorter solution.
+                  // Abort the iteration.
+                  bestSoFar
+                } else {
+                  val newSolution =
                     leastSolutionRecurse(soFar + aPokemon, soFarCount + 1, soFarLength + aPokemon.length, moreLetters, bestSoFar)
-                tryPokemon(morePokemon, leastSolution(newSolution, bestSoFar))
+                  tryPokemon(morePokemon, leastSolution(newSolution, bestSoFar))
+                }
               case Nil =>
                 bestSoFar
             }
