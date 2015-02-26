@@ -45,7 +45,7 @@ object Pokemon extends App with StringSetHelpers {
         case letter +: moreLetters =>
           if (soFar.exists(_.contains(letter)))
             leastSolutionRecurse(soFar, soFarCount, soFarLength, moreLetters, bestSoFar)
-          else if (soFarCount >= maxDepth) {
+          else if ((soFarCount >= maxDepth) || (bestSoFar.isDefined && soFarCount >= bestSoFar.get.size)) {
             // We can't add any more Pokemon to make a better solution
             bestSoFar
           } else {
@@ -53,14 +53,18 @@ object Pokemon extends App with StringSetHelpers {
 
             def tryPokemon(newP: immutable.Seq[String], bestSoFar: Option[Solution]): Option[Solution] = newP match {
               case aPokemon +: morePokemon =>
-                val newSolution =
-                  if (soFarCount >= maxDepth) {
-                    bestSoFar
-                  } else if (bestSoFar.isDefined && (soFarCount == bestSoFar.get.size) && ((soFarLength + aPokemon.length) > bestSoFar.get.length))
-                    bestSoFar
-                  else
+                if (bestSoFar.isDefined &&
+                  ((soFarCount + 1) == bestSoFar.get.size) && ((soFarLength + aPokemon.length) > bestSoFar.get.length)) {
+                  // Adding this Pokemon would make us worse than the existing best solution, i.e. longer.
+                  // However because the list of Pokemon we're traversing is shortest first, there's no point
+                  // keeping going; no further Pokemon in the list can produce a shorter solution.
+                  // Abort the iteration.
+                  bestSoFar
+                } else {
+                  val newSolution =
                     leastSolutionRecurse(soFar + aPokemon, soFarCount + 1, soFarLength + aPokemon.length, moreLetters, bestSoFar)
-                tryPokemon(morePokemon, Solution.min(newSolution, bestSoFar))
+                  tryPokemon(morePokemon, Solution.min(newSolution, bestSoFar))
+                }
               case Nil =>
                 bestSoFar
             }
@@ -88,9 +92,9 @@ object Pokemon extends App with StringSetHelpers {
   }
 
   val start = System.currentTimeMillis()
-  // TODO parallelise across first letter
+  // TODO parallelise across first letter, or expansion of first few letters
 
-  // Breath-first search
+  // Breadth-first search
   // Create a lazily-evaluated stream of solutions with an increasing maximum depth
   // then take the first non-empty result as our solution
   val solutionStream = (1 until letters.size).inclusive.toStream.map { findShallowestSolution(_) }
